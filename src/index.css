@@ -1,0 +1,69 @@
+/* CSS Variables – dark theme */
+:root {
+  --bg: #0f1117;
+  --header-bg: #161b25;
+  --card-bg: #1a2033;
+  --modal-bg: #1a2033;
+  --input-bg: #0f1117;
+  --table-header-bg: #161b25;
+  --table-alt-bg: #161b25;
+
+  --border: #2a3347;
+  --accent: #4f7cff;
+  --accent-bg: rgba(79, 124, 255, 0.08);
+  --accent-border: rgba(79, 124, 255, 0.25);
+
+  --text-primary: #e8eaf0;
+  --text-secondary: #aab0c0;
+  --text-muted: #6b7694;
+
+  --green: #34d399;
+  --red: #f87171;
+
+  --badge-win-bg: rgba(52, 211, 153, 0.12);
+  --badge-win: #34d399;
+  --badge-loss-bg: rgba(248, 113, 113, 0.12);
+  --badge-loss: #f87171;
+  --badge-pending-bg: rgba(79, 124, 255, 0.12);
+  --badge-pending: #4f7cff;
+  --badge-void-bg: rgba(107, 118, 148, 0.15);
+  --badge-void: #6b7694;
+
+  --tab-active-bg: rgba(79, 124, 255, 0.1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(79, 124, 255, 0.2);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
