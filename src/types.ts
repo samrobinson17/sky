@@ -1,54 +1,37 @@
-export type BetResult = 'pending' | 'win' | 'loss' | 'void' | 'half-win' | 'half-loss';
+export type DebtCategory = 'credit-card' | 'student-loan' | 'auto' | 'personal' | 'medical' | 'other';
 
-export type BetType =
-  | 'moneyline'
-  | 'spread'
-  | 'over/under'
-  | 'parlay'
-  | 'prop'
-  | 'futures'
-  | 'other';
-
-export type Sport =
-  | 'football'
-  | 'basketball'
-  | 'baseball'
-  | 'hockey'
-  | 'soccer'
-  | 'tennis'
-  | 'golf'
-  | 'mma'
-  | 'boxing'
-  | 'other';
-
-export interface Bet {
+export interface Debt {
   id: string;
-  date: string;
-  sport: Sport;
-  event: string;
-  betType: BetType;
-  description: string;
-  odds: number; // decimal odds (e.g. 1.91, 2.50)
-  stake: number;
-  result: BetResult;
-  notes: string;
+  name: string;
+  balance: number;
+  apr: number;
+  minPayment: number;
+  category: DebtCategory;
 }
 
-export interface Stats {
-  totalBets: number;
-  settledBets: number;
-  wins: number;
-  losses: number;
-  voids: number;
-  winRate: number;
-  totalStaked: number;
-  totalReturns: number;
-  profitLoss: number;
-  roi: number;
-  avgOdds: number;
-  avgStake: number;
-  biggestWin: number;
-  biggestLoss: number;
-  currentStreak: number;
-  streakType: 'win' | 'loss' | 'none';
+export type Strategy = 'avalanche' | 'snowball';
+
+export interface DebtPayment {
+  debtId: string;
+  principal: number;
+  interest: number;
+  remaining: number;
+}
+
+export interface PayoffMonth {
+  month: number;
+  date: string;
+  payments: DebtPayment[];
+  totalPaid: number;
+  totalInterest: number;
+  totalRemaining: number;
+}
+
+export interface PayoffResult {
+  strategy: Strategy;
+  months: PayoffMonth[];
+  totalInterestPaid: number;
+  totalPaid: number;
+  payoffDate: string;
+  monthsToPayoff: number;
 }
