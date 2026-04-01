@@ -47,12 +47,14 @@ export default function BetSlip({ bets, bankroll, onBankrollChange }: BetSlipPro
   const [oddsInput, setOddsInput] = useState('');
   const [bankrollInput, setBankrollInput] = useState(String(bankroll));
 
-  function getOdds(): number | null {
+  const parsedOdds = (() => {
     const v = parseFloat(oddsInput);
     if (isNaN(v)) return null;
-    if (oddsFormat === 'american') return oddsAmericanToDecimal(v);
-    return v;
-  }
+    const dec = oddsFormat === 'american' ? oddsAmericanToDecimal(v) : v;
+    return dec > 1 ? dec : null;
+  })();
+
+  function getOdds(): number | null { return parsedOdds; }
 
   function addBet() {
     const odds = getOdds();
@@ -139,8 +141,8 @@ export default function BetSlip({ bets, bankroll, onBankrollChange }: BetSlipPro
         </div>
         <button
           onClick={addBet}
-          disabled={!getOdds() || (getOdds() ?? 0) <= 1}
-          style={{ marginTop: 14, padding: '9px 22px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (!getOdds() || (getOdds() ?? 0) <= 1) ? 0.5 : 1 }}
+          disabled={!parsedOdds}
+          style={{ marginTop: 14, padding: '9px 22px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !parsedOdds ? 0.5 : 1 }}
         >
           Analyse Bet
         </button>

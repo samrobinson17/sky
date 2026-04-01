@@ -213,6 +213,7 @@ export function getEdgeByOddsRange(bets: Bet[]): EdgeRow[] {
  *  Returns a fraction 0–1 (cap at 0.25 for safety).
  */
 export function kellyCriterion(winProb: number, decimalOdds: number): number {
+  if (decimalOdds <= 1) return 0;
   const b = decimalOdds - 1; // net odds
   const q = 1 - winProb;
   const kelly = (b * winProb - q) / b;
