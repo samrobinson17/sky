@@ -139,3 +139,158 @@ export function getStatsBySport(
     roi: d.stake > 0 ? parseFloat(((d.profitLoss / d.stake) * 100).toFixed(1)) : 0,
   }));
 }
+
+export interface EdgeRow {
+  label: string;
+  bets: number;
+  wins: number;
+  winRate: number;        // actual win %
+  breakEven: number;      // win % needed to break even at avg odds
+  edge: number;           // winRate - breakEven (positive = +EV)
+  avgOdds: number;
+  roi: number;
+  profitLoss: number;
+  reliable: boolean;      // true if ≥10 settled bets
+}
+
+function buildEdgeRows(
+  bets: Bet[],
+  groupKey: (b: Bet) => string
+): EdgeRow[] {
+  const map = new Map<string, { bets: Bet[] }>();
+  for (const b of bets) {
+    if (b.result === 'pending' || b.result === 'void') continue;
+    const key = groupKey(b);
+    if (!map.has(key)) map.set(key, { bets: [] });
+    map.get(key)!.bets.push(b);
+  }
+
+  return Array.from(map.entries()).map(([label, { bets: group }]) => {
+    const wins = group.filter(b => b.result === 'win' || b.result === 'half-win').length;
+    const winRate = wins / group.length;
+    const avgOdds = group.reduce((s, b) => s + b.odds, 0) / group.length;
+    const breakEven = 1 / avgOdds;
+    const edge = winRate - breakEven;
+    const totalStake = group.reduce((s, b) => s + b.stake, 0);
+    const pl = group.reduce((s, b) => s + calcProfitLoss(b), 0);
+    return {
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      bets: group.length,
+      wins,
+      winRate: parseFloat((winRate * 100).toFixed(1)),
+      breakEven: parseFloat((breakEven * 100).toFixed(1)),
+      edge: parseFloat((edge * 100).toFixed(1)),
+      avgOdds: parseFloat(avgOdds.toFixed(2)),
+      roi: totalStake > 0 ? parseFloat(((pl / totalStake) * 100).toFixed(1)) : 0,
+      profitLoss: parseFloat(pl.toFixed(2)),
+      reliable: group.length >= 10,
+    };
+  }).sort((a, b) => b.edge - a.edge);
+}
+
+export function getEdgeBySport(bets: Bet[]): EdgeRow[] {
+  return buildEdgeRows(bets, b => b.sport);
+}
+
+export function getEdgeByBetType(bets: Bet[]): EdgeRow[] {
+  return buildEdgeRows(bets, b => b.betType);
+}
+
+export function getEdgeByOddsRange(bets: Bet[]): EdgeRow[] {
+  return buildEdgeRows(bets, b => {
+    if (b.odds < 1.5) return 'Very Short (<1.5)';
+    if (b.odds < 1.8) return 'Short (1.5–1.8)';
+    if (b.odds < 2.2) return 'Evens (1.8–2.2)';
+    if (b.odds < 3.0) return 'Medium (2.2–3.0)';
+    if (b.odds < 5.0) return 'Long (3.0–5.0)';
+    return 'Very Long (5.0+)';
+  });
+}
+
+/** Kelly Criterion: fraction of bankroll to stake.
+ *  winProb: estimated probability of winning (0–1)
+ *  decimalOdds: e.g. 2.50
+ *  Returns a fraction 0–1 (cap at 0.25 for safety).
+ */
+export function kellyCriterion(winProb: number, decimalOdds: number): number {
+  const b = decimalOdds - 1; // net odds
+  const q = 1 - winProb;
+  const kelly = (b * winProb - q) / b;
+  if (kelly <= 0) return 0;
+  return Math.min(kelly, 0.25); // never bet more than 25%
+}
+
+export interface BetRecommendation {
+  historicalWinRate: number | null;   // from sport history
+  historicalBets: number;
+  breakEven: number;
+  edge: number | null;                // null if no history
+  kellyFraction: number;              // using historical win rate
+  kellyStake: number;                 // in $
+  verdict: 'strong' | 'lean' | 'avoid' | 'insufficient-data';
+  reason: string;
+}
+
+export function analyzeBet(
+  bets: Bet[],
+  sport: string,
+  betType: string,
+  odds: number,
+  bankroll: number
+): BetRecommendation {
+  const settled = bets.filter(
+    b => b.result !== 'pending' && b.result !== 'void'
+  );
+  const relevant = settled.filter(b => b.sport === sport && b.betType === betType);
+  const sportOnly = settled.filter(b => b.sport === sport);
+
+  // prefer sport+type, fall back to sport-only
+  const sample = relevant.length >= 5 ? relevant : sportOnly;
+  const sampleSize = sample.length;
+
+  const breakEven = 1 / odds;
+
+  if (sampleSize < 5) {
+    return {
+      historicalWinRate: null,
+      historicalBets: sampleSize,
+      breakEven: parseFloat((breakEven * 100).toFixed(1)),
+      edge: null,
+      kellyFraction: 0,
+      kellyStake: 0,
+      verdict: 'insufficient-data',
+      reason: `Only ${sampleSize} historical bets for this sport/type. Need at least 5 to make a recommendation.`,
+    };
+  }
+
+  const wins = sample.filter(b => b.result === 'win' || b.result === 'half-win').length;
+  const winRate = wins / sampleSize;
+  const edge = winRate - breakEven;
+  const kelly = kellyCriterion(winRate, odds);
+  const kellyStake = parseFloat((kelly * bankroll).toFixed(2));
+
+  let verdict: BetRecommendation['verdict'];
+  let reason: string;
+
+  if (edge >= 0.05) {
+    verdict = 'strong';
+    reason = `Your win rate (${(winRate*100).toFixed(1)}%) is well above the break-even needed (${(breakEven*100).toFixed(1)}%). Strong historical edge.`;
+  } else if (edge >= 0.01) {
+    verdict = 'lean';
+    reason = `Slight edge — your win rate (${(winRate*100).toFixed(1)}%) is just above break-even (${(breakEven*100).toFixed(1)}%). Proceed with caution.`;
+  } else {
+    verdict = 'avoid';
+    reason = `Your historical win rate (${(winRate*100).toFixed(1)}%) is below the ${(breakEven*100).toFixed(1)}% needed to profit at these odds. Negative expected value.`;
+  }
+
+  return {
+    historicalWinRate: parseFloat((winRate * 100).toFixed(1)),
+    historicalBets: sampleSize,
+    breakEven: parseFloat((breakEven * 100).toFixed(1)),
+    edge: parseFloat((edge * 100).toFixed(1)),
+    kellyFraction: parseFloat((kelly * 100).toFixed(1)),
+    kellyStake,
+    verdict,
+    reason,
+  };
+}

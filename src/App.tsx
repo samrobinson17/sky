@@ -4,9 +4,25 @@ import { loadBets, saveBets } from './utils/storage';
 import Dashboard from './components/Dashboard';
 import BetHistory from './components/BetHistory';
 import AddBetModal from './components/AddBetModal';
+import Analysis from './components/Analysis';
+import BetSlip from './components/BetSlip';
 import { computeStats } from './utils/stats';
 
-type Tab = 'dashboard' | 'history';
+type Tab = 'dashboard' | 'analysis' | 'betslip' | 'history';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'analysis',  label: 'My Edge' },
+  { id: 'betslip',   label: "Today's Bets" },
+  { id: 'history',   label: 'History' },
+];
+
+const BANKROLL_KEY = 'betting_bankroll';
+
+function loadBankroll(): number {
+  const v = localStorage.getItem(BANKROLL_KEY);
+  return v ? parseFloat(v) : 1000;
+}
 
 function fmt(n: number) {
   const abs = Math.abs(n).toFixed(2);
@@ -18,6 +34,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [showAdd, setShowAdd] = useState(false);
   const [editBet, setEditBet] = useState<Bet | null>(null);
+  const [bankroll, setBankroll] = useState<number>(loadBankroll);
 
   const persist = useCallback((updated: Bet[]) => {
     setBets(updated);
@@ -44,89 +61,41 @@ export default function App() {
     setShowAdd(true);
   }
 
+  function handleBankrollChange(n: number) {
+    setBankroll(n);
+    localStorage.setItem(BANKROLL_KEY, String(n));
+  }
+
   const stats = computeStats(bets);
   const plPositive = stats.profitLoss >= 0;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
-      <header
-        style={{
-          background: 'var(--header-bg)',
-          borderBottom: '1px solid var(--border)',
-          padding: '0 24px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', height: 60, gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 8 }}>
-            <span style={{ fontSize: 22 }}>📈</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>BetTracker</span>
+      <header style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', padding: '0 24px', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', height: 60, gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 8 }}>
+            <span style={{ fontSize: 20 }}>📈</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>BetTracker</span>
           </div>
 
-          {/* Tabs */}
-          <nav style={{ display: 'flex', gap: 4 }}>
-            {(['dashboard', 'history'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  background: tab === t ? 'var(--tab-active-bg)' : 'transparent',
-                  color: tab === t ? 'var(--accent)' : 'var(--text-muted)',
-                }}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+          <nav style={{ display: 'flex', gap: 2 }}>
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '6px 13px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, background: tab === t.id ? 'var(--tab-active-bg)' : 'transparent', color: tab === t.id ? 'var(--accent)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {t.label}
               </button>
             ))}
           </nav>
 
-          {/* P/L pill */}
           {bets.length > 0 && (
-            <div
-              style={{
-                marginLeft: 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-              }}
-            >
-              <span
-                style={{
-                  background: plPositive ? 'var(--badge-win-bg)' : 'var(--badge-loss-bg)',
-                  color: plPositive ? 'var(--badge-win)' : 'var(--badge-loss)',
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
-                {fmt(stats.profitLoss)} · {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}% ROI
-              </span>
-            </div>
+            <span style={{ marginLeft: 'auto', background: plPositive ? 'var(--badge-win-bg)' : 'var(--badge-loss-bg)', color: plPositive ? 'var(--badge-win)' : 'var(--badge-loss)', padding: '4px 11px', borderRadius: 20, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {fmt(stats.profitLoss)} · {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}% ROI
+            </span>
           )}
 
           <button
             onClick={() => { setEditBet(null); setShowAdd(true); }}
-            style={{
-              marginLeft: bets.length > 0 ? 0 : 'auto',
-              padding: '8px 18px',
-              borderRadius: 8,
-              border: 'none',
-              background: 'var(--accent)',
-              color: '#fff',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
+            style={{ marginLeft: bets.length > 0 ? 0 : 'auto', padding: '7px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
             + Add Bet
           </button>
@@ -136,18 +105,13 @@ export default function App() {
       {/* Main */}
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
         {tab === 'dashboard' && <Dashboard bets={bets} />}
-        {tab === 'history' && (
-          <BetHistory bets={bets} onEdit={handleEdit} onDelete={handleDelete} />
-        )}
+        {tab === 'analysis'  && <Analysis bets={bets} />}
+        {tab === 'betslip'   && <BetSlip bets={bets} bankroll={bankroll} onBankrollChange={handleBankrollChange} />}
+        {tab === 'history'   && <BetHistory bets={bets} onEdit={handleEdit} onDelete={handleDelete} />}
       </main>
 
-      {/* Modal */}
       {showAdd && (
-        <AddBetModal
-          onSave={handleSave}
-          onClose={() => { setShowAdd(false); setEditBet(null); }}
-          editBet={editBet}
-        />
+        <AddBetModal onSave={handleSave} onClose={() => { setShowAdd(false); setEditBet(null); }} editBet={editBet} />
       )}
     </div>
   );
