@@ -1,13 +1,15 @@
 import { useState, useCallback } from 'react';
 import type { Bet } from '../types';
-import { fetchOdds, mapSport, mapBetType, formatTime, type ValueBet } from '../utils/oddsApi';
+import { fetchOdds, mapSport, mapBetType, formatTime, type ValueBet, type OddsGame } from '../utils/oddsApi';
 import { analyzeBet, formatOddsAmerican } from '../utils/stats';
+import { DEMO_GAMES, DEMO_SPORT_KEYS } from '../utils/demoData';
 
 interface FindBetsProps {
   bets: Bet[];
   apiKey: string;
   bankroll: number;
   onNeedKey: () => void;
+  demoMode?: boolean;
 }
 
 const POPULAR_SPORTS = [
@@ -22,7 +24,7 @@ const POPULAR_SPORTS = [
 
 type FilterVerdict = 'all' | 'strong' | 'lean';
 
-export default function FindBets({ bets, apiKey, bankroll, onNeedKey }: FindBetsProps) {
+export default function FindBets({ bets, apiKey, bankroll, onNeedKey, demoMode }: FindBetsProps) {
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [valueBets, setValueBets] = useState<ValueBet[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,13 +33,20 @@ export default function FindBets({ bets, apiKey, bankroll, onNeedKey }: FindBets
   const [requestsLeft] = useState<string | null>(null);
 
   const analyse = useCallback(async (sportKey: string) => {
-    if (!apiKey) { onNeedKey(); return; }
+    if (!demoMode && !apiKey) { onNeedKey(); return; }
     setLoading(true);
     setError(null);
     setSelectedSport(sportKey);
     setValueBets([]);
     try {
-      const games = await fetchOdds(apiKey, sportKey);
+      let games: OddsGame[];
+      if (demoMode) {
+        await new Promise(r => setTimeout(r, 600)); // simulate loading
+        games = DEMO_GAMES.filter(g => g.sport_key === sportKey || DEMO_SPORT_KEYS.includes(sportKey));
+        if (!DEMO_SPORT_KEYS.includes(sportKey)) games = [];
+      } else {
+        games = await fetchOdds(apiKey, sportKey);
+      }
       // update requests remaining from response header via a second call isn't possible here
       // but we parse it from the X-Requests-Remaining header if available
 
@@ -124,9 +133,17 @@ export default function FindBets({ bets, apiKey, bankroll, onNeedKey }: FindBets
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Demo banner */}
+      {demoMode && (
+        <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 12, padding: '12px 18px', fontSize: 13, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>🎭</span>
+          <span><strong>Demo mode</strong> — showing sample odds so you can see how this works. To get real live odds, add a free API key in <strong>Settings</strong> (the-odds-api.com, free signup).</span>
+        </div>
+      )}
+
       {/* Info banner */}
       <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-        <strong style={{ color: 'var(--text-secondary)' }}>How this works:</strong> We pull today's live odds from multiple bookmakers, then cross-reference every bet against your personal win rate for that sport and bet type. Only bets where <em>your history</em> suggests positive expected value are highlighted.
+        <strong style={{ color: 'var(--text-secondary)' }}>How this works:</strong> We pull today's odds from multiple bookmakers, then cross-reference every bet against your personal win rate for that sport and bet type. Only bets where <em>your history</em> suggests positive expected value are highlighted.
         {bets.filter(b => b.result !== 'pending' && b.result !== 'void').length < 20 && (
           <span style={{ color: '#fbbf24' }}> — You have fewer than 20 settled bets so most results will show "NO DATA". Keep logging to unlock personalised recommendations.</span>
         )}

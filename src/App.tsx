@@ -123,9 +123,7 @@ export default function App() {
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 24px' }}>
         {tab === 'dashboard' && <Dashboard bets={bets} />}
         {tab === 'find'      && (
-          apiKey
-            ? <FindBets bets={bets} apiKey={apiKey} bankroll={bankroll} onNeedKey={() => setTab('settings')} />
-            : <NeedKey onGoToSettings={() => setTab('settings')} />
+          <FindBets bets={bets} apiKey={apiKey} bankroll={bankroll} onNeedKey={() => setTab('settings')} demoMode={!apiKey} />
         )}
         {tab === 'analysis'  && <Analysis bets={bets} />}
         {tab === 'betslip'   && <BetSlip bets={bets} bankroll={bankroll} onBankrollChange={br => handleSettingsSave(apiKey, br)} />}
@@ -140,21 +138,3 @@ export default function App() {
   );
 }
 
-function NeedKey({ onGoToSettings }: { onGoToSettings: () => void }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🔑</div>
-      <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>API Key Required</h2>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.6, maxWidth: 360, margin: '0 auto 24px' }}>
-        To find live bets you need a free API key from <strong style={{ color: 'var(--text-secondary)' }}>the-odds-api.com</strong>.
-        Sign up free (500 requests/month), then add your key in Settings.
-      </p>
-      <button
-        onClick={onGoToSettings}
-        style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-      >
-        Go to Settings
-      </button>
-    </div>
-  );
-}
