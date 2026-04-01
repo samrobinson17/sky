@@ -8,15 +8,17 @@ import Analysis from './components/Analysis';
 import BetSlip from './components/BetSlip';
 import FindBets from './components/FindBets';
 import Settings from './components/Settings';
+import TodaysGames from './components/TodaysGames';
 import { computeStats } from './utils/stats';
 
-type Tab = 'dashboard' | 'find' | 'analysis' | 'betslip' | 'history' | 'settings';
+type Tab = 'today' | 'dashboard' | 'find' | 'analysis' | 'betslip' | 'history' | 'settings';
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'today',     label: '📅 Today' },
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'find',      label: '🔎 Find Bets' },
   { id: 'analysis',  label: 'My Edge' },
-  { id: 'betslip',   label: "Today's Bets" },
+  { id: 'betslip',   label: 'Bet Slip' },
   { id: 'history',   label: 'History' },
   { id: 'settings',  label: 'Settings' },
 ];
@@ -40,7 +42,7 @@ function fmt(n: number) {
 
 export default function App() {
   const [bets, setBets] = useState<Bet[]>(() => loadBets());
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const [tab, setTab] = useState<Tab>('today');
   const [showAdd, setShowAdd] = useState(false);
   const [editBet, setEditBet] = useState<Bet | null>(null);
   const [bankroll, setBankroll] = useState<number>(loadBankroll);
@@ -121,6 +123,7 @@ export default function App() {
 
       {/* Main */}
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 24px' }}>
+        {tab === 'today'     && <TodaysGames />}
         {tab === 'dashboard' && <Dashboard bets={bets} />}
         {tab === 'find'      && (
           <FindBets bets={bets} apiKey={apiKey} bankroll={bankroll} onNeedKey={() => setTab('settings')} demoMode={!apiKey} />
